@@ -1,46 +1,30 @@
 from src.retriever import retrieve
 from src.generator import generate
 from src.generator import score_answer
-from src.rag_sequence import rag_sequence_score
+from src.rag_sequence import rag_sequence_score, generate_candidates
 
-question = "Who discovered penicillin?"
-
-candidates = [
-    "Alexander Fleming",
-    "Francis Crick",
-]
-
-print("Question:")
-print(question)
-
-print("\nCandidate scores:")
-
-for answer in candidates:
-
-    score = rag_sequence_score(
-        question,
-        answer,
-        k=3,
-    )
-
-    print(f"{answer}: {score:.6f}")
+question = "Who authored Harry Potter?"
 
 results = retrieve(question, 3)
 
+candidates = generate_candidates(question, results)
+
 print("Question:")
 print(question)
 
-passages = [result["passage"] for result in results]
+print("\nGenerated candidates:")
 
-context = " ".join(passages)
+for candidate in candidates:
+    print(f"- {candidate}")
 
-print("\nRetrieved passage:")
-print(passages)
+print("\nRAG-Sequence scores:")
 
-answer = generate(
-    question,
-    passages,
-)
+for candidate in candidates:
 
-print("\nGenerated answer:")
-print(answer)
+    score = rag_sequence_score(
+        question,
+        candidate,
+        results,
+    )
+
+    print(f"{candidate}: {score:.6f}")

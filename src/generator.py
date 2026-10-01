@@ -42,3 +42,45 @@ def generate(question, passage):
     )
 
     return answer
+
+
+def score_answer(question, passage, answer):
+
+    input_text = f"question: {question} context: {passage}"
+
+    inputs = tokenizer(
+        input_text,
+        return_tensors="pt",
+        truncation=True,
+        max_length=512,
+    )
+
+    target = tokenizer(
+        answer,
+        return_tensors="pt",
+        truncation=True,
+        max_length=128,
+    )
+
+    inputs = {key: value.to(device) for key, value in inputs.items()}
+    labels = target["input_ids"].to(device)
+
+    with torch.no_grad():
+        outputs = generator(
+            input_ids=inputs["input_ids"],
+            attention_mask=inputs["attention_mask"],
+            labels=labels,
+        )
+
+    logits = outputs.logits
+
+    log_probs = torch.log_softmax(logits, dim=-1)
+
+    token_log_probs = log_probs.gather(
+        dim=-1,
+        index=labels.unsqueeze(-1),
+    ).squeeze(-1)
+
+    sequence_log_prob = token_log_probs.sum()
+
+    return sequence_log_prob.item()
