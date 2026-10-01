@@ -1,7 +1,7 @@
 from src.retriever import retrieve
 from src.generator import generate
 
-question = "Who discovered penicillin?"
+question = "First person to walk on the moon?"
 
 results = retrieve(question, 3)
 
