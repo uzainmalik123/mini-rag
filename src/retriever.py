@@ -15,16 +15,12 @@ question_model_name = "facebook/dpr-question_encoder-single-nq-base"
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 document_encoder = DPRContextEncoder.from_pretrained(model_name)
 
-print("Document encoder loaded")
-
 # ENCODE DOCUMENTS
 
 inputs = tokenizer(passages, padding=True, truncation=True, return_tensors="pt")
 
 with torch.no_grad():
     document_embeddings = document_encoder(**inputs).pooler_output
-
-print(document_embeddings.shape)
 
 document_vectors = document_embeddings.cpu().numpy().astype("float32")
 
@@ -33,8 +29,6 @@ document_vectors = document_embeddings.cpu().numpy().astype("float32")
 dimension = document_vectors.shape[1]
 index = faiss.IndexFlatIP(dimension)
 index.add(document_vectors)
-
-print("Documents in index: ", index.ntotal)
 
 
 def retrieve(question, k):
@@ -57,6 +51,8 @@ def retrieve(question, k):
 
     scores, indices = index.search(question_vector, k)
 
+    probabilities = torch.softmax(torch.tensor(scores[0]), dim=0).tolist()
+
     # RESULTS
     results = []
 
@@ -65,6 +61,7 @@ def retrieve(question, k):
             {
                 "rank": rank + 1,
                 "score": float(scores[0][rank]),
+                "probability": probabilities[rank],
                 "passage": passages[document_index],
             }
         )

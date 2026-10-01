@@ -41,3 +41,28 @@ def generate_candidates(question, results):
         candidates.append(answer)
 
     return candidates
+
+
+def rag_sequence_generate(question, results):
+
+    candidates = generate_candidates(
+        question,
+        results,
+    )
+
+    best_candidate = None
+    best_score = float("-inf")
+
+    for candidate in candidates:
+
+        score = rag_sequence_score(
+            question,
+            candidate,
+            results,
+        )
+
+        if score > best_score:
+            best_score = score
+            best_candidate = candidate
+
+    return best_candidate, best_score
