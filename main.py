@@ -1,21 +1,26 @@
 from src.retriever import retrieve
 from src.generator import generate
 
-question = "First person to walk on the moon?"
+question = "Who authored Harry Potter?"
 
 results = retrieve(question, 3)
-
-top_passage = results[0]["passage"]
 
 print("Question:")
 print(question)
 
+for result in results:
+    print(f"{result['rank']}. {result['passage']}")
+
+passages = [result["passage"] for result in results]
+
+context = " ".join(passages)
+
 print("\nRetrieved passage:")
-print(top_passage)
+print(passages)
 
 answer = generate(
     question,
-    top_passage,
+    passages,
 )
 
 print("\nGenerated answer:")
