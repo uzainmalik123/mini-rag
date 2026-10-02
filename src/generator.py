@@ -84,3 +84,48 @@ def score_answer(question, passage, answer):
     sequence_log_prob = token_log_probs.sum()
 
     return sequence_log_prob.item()
+
+
+def get_next_token_probabilities(
+    question,
+    passage,
+    prefix_ids=None,
+):
+
+    input_text = f"question: {question} context: {passage}"
+
+    inputs = tokenizer(
+        input_text,
+        return_tensors="pt",
+        truncation=True,
+        max_length=512,
+    )
+
+    inputs = {key: value.to(device) for key, value in inputs.items()}
+
+    # If no prefix was provided,
+    # let BART use its normal starting decoder token.
+    if prefix_ids is None:
+        prefix_ids = torch.tensor(
+            [[generator.config.decoder_start_token_id]],
+            device=device,
+        )
+
+    else:
+        prefix_ids = prefix_ids.to(device)
+
+    with torch.no_grad():
+        outputs = generator(
+            input_ids=inputs["input_ids"],
+            attention_mask=inputs["attention_mask"],
+            decoder_input_ids=prefix_ids,
+        )
+
+    next_token_logits = outputs.logits[:, -1, :]
+
+    probabilities = torch.softmax(
+        next_token_logits,
+        dim=-1,
+    )
+
+    return probabilities
