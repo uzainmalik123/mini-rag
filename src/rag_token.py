@@ -94,7 +94,7 @@ def rag_token_beam_search(
 ):
     """
     Generate an answer using RAG-Token
-    with beam search.
+    with beam search and finished-beam handling.
     """
 
     start_token_id = torch.tensor(
@@ -106,10 +106,11 @@ def rag_token_beam_search(
         {
             "prefix_ids": start_token_id,
             "score": 0.0,
+            "finished": False,
         }
     ]
 
-    for step in range(max_new_tokens):
+    for _ in range(max_new_tokens):
 
         candidates = []
 
@@ -118,17 +119,21 @@ def rag_token_beam_search(
             prefix_ids = beam["prefix_ids"]
             current_score = beam["score"]
 
-            # Get RAG-Token's combined next-token distribution.
+            # Don't expand a beam that already generated EOS.
+            if beam["finished"]:
+
+                candidates.append(beam)
+
+                continue
+
             probabilities = marginalize_next_token_probabilities(
                 question,
                 results,
                 prefix_ids=prefix_ids,
             )
 
-            # Convert probabilities to log probabilities.
             log_probabilities = torch.log(probabilities.clamp(min=1e-12))
 
-            # Take the best possible next tokens.
             top_log_probs, top_token_ids = log_probabilities.topk(beam_size)
 
             for log_prob, token_id in zip(
@@ -146,14 +151,16 @@ def rag_token_beam_search(
 
                 new_score = current_score + log_prob.item()
 
+                finished = token_id.item() == 2
+
                 candidates.append(
                     {
                         "prefix_ids": new_prefix_ids,
                         "score": new_score,
+                        "finished": finished,
                     }
                 )
 
-        # Keep the best beams.
         candidates.sort(
             key=lambda beam: beam["score"],
             reverse=True,
@@ -161,16 +168,14 @@ def rag_token_beam_search(
 
         beams = candidates[:beam_size]
 
-        print(f"\nStep {step + 1}")
+        # for index, beam in enumerate(beams):
+        #
+        #     tokens = tokenizer.convert_ids_to_tokens(beam["prefix_ids"][0])
+        #
+        #     print(f"Beam {index + 1}: " f"{tokens} " f"score={beam['score']:.6f}")
 
-        for index, beam in enumerate(beams):
-
-            tokens = tokenizer.convert_ids_to_tokens(beam["prefix_ids"][0])
-
-            print(f"Beam {index + 1}: " f"{tokens} " f"score={beam['score']:.6f}")
-
-        # Stop if every beam has ended.
-        if all(beam["prefix_ids"][0, -1].item() == 2 for beam in beams):
+        # Stop when every remaining beam is finished.
+        if all(beam["finished"] for beam in beams):
             break
 
     best_beam = beams[0]

@@ -13,7 +13,7 @@ results = retrieve(
 answer, score = rag_token_beam_search(
     question,
     results,
-    beam_size=2,
+    beam_size=1,
 )
 
 print("\nBeam-search RAG-Token answer:")
